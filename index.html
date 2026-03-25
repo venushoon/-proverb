@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>초등 속담/관용 표현 퀴즈 왕!</title>
+    <style>
+        :root {
+            --bg-color: #f0f9ff;
+            --primary-color: #4cc9f0;
+            --secondary-color: #4895ef;
+            --accent-color: #f72585;
+            --text-color: #2b2d42;
+        }
+
+        body {
+            font-family: 'Nanum Gothic', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        #game-container {
+            width: 95%;
+            max-width: 1000px;
+            background: white;
+            border-radius: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        #score-board {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+
+        #question-box {
+            background: var(--primary-color);
+            color: white;
+            padding: 40px 20px;
+            border-radius: 20px;
+            font-size: 2.2rem;
+            margin-bottom: 30px;
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            word-break: keep-all;
+            box-shadow: inset 0 5px 10px rgba(0,0,0,0.1);
+        }
+
+        #options-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .option-btn {
+            background: #fff;
+            border: 4px solid var(--primary-color);
+            border-radius: 15px;
+            padding: 25px 15px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .option-btn:active {
+            transform: scale(0.95);
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        /* 피드백 애니메이션 */
+        .correct { background-color: #4caf50 !important; color: white !important; border-color: #4caf50 !important; }
+        .wrong { background-color: #f44336 !important; color: white !important; border-color: #f44336 !important; }
+
+        #timer-bar {
+            width: 100%;
+            height: 15px;
+            background: #eee;
+            border-radius: 10px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+
+        #timer-fill {
+            width: 100%;
+            height: 100%;
+            background: var(--accent-color);
+            transition: width 0.1s linear;
+        }
+
+        #result-screen {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: white;
+            border-radius: 30px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        button#restart-btn {
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            background: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        .highlight { color: #ffeb3b; font-weight: 800; text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="score-board">
+        <span>남은 문제: <span id="q-count">0</span>/20</span>
+        <span>점수: <span id="score">0</span></span>
+    </div>
+
+    <div id="question-box">
+        문제가 여기에 표시됩니다.
+    </div>
+
+    <div id="options-container">
+        <div class="option-btn" onclick="checkAnswer(0)"></div>
+        <div class="option-btn" onclick="checkAnswer(1)"></div>
+        <div class="option-btn" onclick="checkAnswer(2)"></div>
+        <div class="option-btn" onclick="checkAnswer(3)"></div>
+    </div>
+
+    <div id="timer-bar">
+        <div id="timer-fill"></div>
+    </div>
+
+    <div id="result-screen">
+        <h1>🎮 게임 종료!</h1>
+        <p style="font-size: 2rem;">최종 점수: <span id="final-score">0</span>점</p>
+        <button id="restart-btn" onclick="startGame()">다시 시작하기</button>
+    </div>
+</div>
+
+<script>
+    // 속담 및 관용구 데이터 (100개 중 샘플 20개, 실제 서비스 시 100개로 확장 가능)
+    const data = [
+        { q: "가는 말이 고와야 □□ 말이 곱다.", a: "오는", options: ["오는", "가는", "남의", "듣는"] },
+        { q: "세 살 버릇 □□까지 간다.", a: "여든", options: ["여든", "평생", "어른", "일흔"] },
+        { q: "발 없는 말이 □□ 간다.", a: "천 리", options: ["천 리", "만 리", "멀리", "금방"] },
+        { q: "소 잃고 □□□ 고친다.", a: "외양간", options: ["외양간", "지붕", "대문", "울타리"] },
+        { q: "백지장도 맞들면 □□.", a: "낫다", options: ["낫다", "무겁다", "좋다", "쉽다"] },
+        { q: "티끌 모아 □□.", a: "태산", options: ["태산", "동산", "재산", "먼지"] },
+        { q: "등잔 밑이 □□다.", a: "어둡", options: ["어둡", "밝", "멀", "좁"] },
+        { q: "입이 □□라도 할 말이 없다.", a: "열 개", options: ["열 개", "백 개", "하나", "두 개"] },
+        { q: "금강산도 □□□ 구경.", a: "식후경", options: ["식후경", "가족", "먼저", "사진"] },
+        { q: "고생 끝에 □이 온다.", a: "낙", options: ["낙", "복", "돈", "꽃"] },
+        { q: "누워서 □ 떡 먹기.", a: "식은", options: ["식은", "구운", "남의", "찰"] },
+        { q: "밑 빠진 독에 □ 붓기.", a: "물", options: ["물", "돈", "공", "쌀"] },
+        { q: "그림의 □.", a: "떡", options: ["떡", "빵", "꽃", "별"] },
+        { q: "배보다 □이 더 크다.", a: "배꼽", options: ["배꼽", "머리", "손발", "다리"] },
+        { q: "식은 죽 □기.", a: "먹", options: ["먹", "마시", "불", "버리"] },
+        { q: "하늘의 □ 따기.", a: "별", options: ["별", "달", "해", "구름"] },
+        { q: "고래 싸움에 □ 새우 등 터진다.", a: "등", options: ["등", "코", "배", "입"] },
+        { q: "매도 먼저 맞는 게 □다.", a: "낫", options: ["낫", "속상하", "아프", "좋"] },
+        { q: "윗물이 맑아야 □□이 맑다.", a: "아랫물", options: ["아랫물", "개울물", "바닷물", "강물"] },
+        { q: "돌다리도 □□ 보고 건너라.", a: "두드려", options: ["두드려", "살펴", "만져", "물어"] }
+        // ... 여기에 100개까지 추가 가능
+    ];
+
+    let currentQuiz = {};
+    let score = 0;
+    let quizCount = 0;
+    let timer;
+    let timeLeft = 100;
+    let gameActive = false;
+    let shuffledData = [];
+
+    function startGame() {
+        score = 0;
+        quizCount = 0;
+        gameActive = true;
+        shuffledData = [...data].sort(() => Math.random() - 0.5);
+        document.getElementById('result-screen').style.display = 'none';
+        document.getElementById('score').innerText = score;
+        nextQuestion();
+    }
+
+    function nextQuestion() {
+        if (quizCount >= 20 || quizCount >= shuffledData.length) {
+            endGame();
+            return;
+        }
+
+        const buttons = document.querySelectorAll('.option-btn');
+        buttons.forEach(btn => btn.className = 'option-btn');
+
+        currentQuiz = shuffledData[quizCount];
+        
+        // 문제 텍스트 강조 처리
+        let displayQ = currentQuiz.q.replace("□□", "<span class='highlight'>□□</span>");
+        displayQ = displayQ.replace("□", "<span class='highlight'>□</span>");
+        document.getElementById('question-box').innerHTML = displayQ;
+
+        // 보기 섞기
+        let options = [...currentQuiz.options].sort(() => Math.random() - 0.5);
+        buttons.forEach((btn, index) => {
+            btn.innerText = options[index];
+        });
+
+        quizCount++;
+        document.getElementById('q-count').innerText = quizCount;
+        
+        resetTimer();
+    }
+
+    function resetTimer() {
+        clearInterval(timer);
+        timeLeft = 100;
+        const timerFill = document.getElementById('timer-fill');
+        timer = setInterval(() => {
+            timeLeft -= 0.5;
+            timerFill.style.width = timeLeft + "%";
+            if (timeLeft <= 0) {
+                checkAnswer(-1); // 시간 초과 시 오답 처리
+            }
+        }, 50);
+    }
+
+    function checkAnswer(idx) {
+        if (!gameActive) return;
+        
+        clearInterval(timer);
+        const buttons = document.querySelectorAll('.option-btn');
+        const selectedText = idx === -1 ? "" : buttons[idx].innerText;
+
+        if (selectedText === currentQuiz.a) {
+            score += 10;
+            if (idx !== -1) buttons[idx].classList.add('correct');
+            document.getElementById('score').innerText = score;
+        } else {
+            if (idx !== -1) buttons[idx].classList.add('wrong');
+            // 정답 표시
+            buttons.forEach(btn => {
+                if(btn.innerText === currentQuiz.a) btn.classList.add('correct');
+            });
+        }
+
+        gameActive = false;
+        setTimeout(() => {
+            gameActive = true;
+            nextQuestion();
+        }, 1200);
+    }
+
+    function endGame() {
+        gameActive = false;
+        clearInterval(timer);
+        document.getElementById('result-screen').style.display = 'flex';
+        document.getElementById('final-score').innerText = score;
+    }
+
+    // 초기 실행
+    startGame();
+</script>
+
+</body>
+</html>
